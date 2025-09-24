@@ -1,9 +1,13 @@
 
-# true_torsion_revealer.py
+# streamlit_app_backward_simple.py  (v3 – renamed UI text)
 # Backward de‑angulation visualizer (simple UI, Plotly animation)
 # Inputs are *projected* angulations from AP/Lateral X‑rays and apparent torsion from axial CT.
 # The app solves for the true axial twist that reproduces the measured apparent torsion,
-# then de‑angulates (about global X and Y) to reveal the residual (true) torsion.
+# then de‑angulates to reveal the residual (true) torsion.
+#
+# Run:
+#   pip install streamlit numpy plotly
+#   streamlit run streamlit_app_backward_simple.py
 
 import streamlit as st
 import numpy as np
@@ -80,20 +84,17 @@ def bone_traces_arrays(R_dist, limit=3.0):
 
 # --- Solve for true twist that yields the specified *apparent* torsion ---
 def solve_true_twist_from_apparent(alpha, beta, phi_app_deg):
-    '''Find gamma_true (deg) so that the apparent torsion (XY angle between
-    proximal and distal anterior directions) equals phi_app_deg.'''
     A = np.array([0,1,0])
     best_gamma = 0.0
     best_err = 1e9
-    # coarse grid search
-    for g in np.linspace(-180, 180, 1441):  # 0.25°
+    for g in np.linspace(-180, 180, 1441):  # 0.25° coarse
         R = rot_y(beta) @ rot_x(alpha) @ rot_z(g)
         Ad = normalize(R @ A)
         phi = angle_xy(A, Ad)
-        err = abs(((phi - phi_app_deg + 180) % 360) - 180)  # shortest circular diff
+        err = abs(((phi - phi_app_deg + 180) % 360) - 180)
         if err < best_err:
             best_err = err; best_gamma = g
-    # refine locally
+    # refine ±1°
     for g in np.linspace(best_gamma-1.0, best_gamma+1.0, 41):
         R = rot_y(beta) @ rot_x(alpha) @ rot_z(g)
         Ad = normalize(R @ A)
@@ -104,7 +105,7 @@ def solve_true_twist_from_apparent(alpha, beta, phi_app_deg):
     return best_gamma
 
 # ------------------ App ------------------
-st.set_page_config(page_title="True Torsion Revealer – Correcting for Projection Errors", layout="wide")
+st.set_page_config(page_title="True Torsion Revealer", layout="wide")
 left, right = st.columns([1.65, 0.35], gap="large")
 
 with left:
@@ -116,10 +117,11 @@ with left:
 
 with right:
     st.markdown("### Inputs")
-    st.caption(\"\"\"Use <b>projected</b> measurements:
-• <b>Coronal angulation</b> from <b>AP X‑ray</b> (about Y)
-• <b>Sagittal angulation</b> from <b>Lateral X‑ray</b> (about X)
-• <b>Apparent torsion</b> from <b>Axial CT</b> (about Z)\"\"\", unsafe_allow_html=True)
+    st.caption("Enter <b>projected</b> measurements: <br>"
+               "• <b>Coronal</b> from <b>AP X‑ray</b> (about Y) <br>"
+               "• <b>Sagittal</b> from <b>Lateral X‑ray</b> (about X) <br>"
+               "• <b>Apparent torsion</b> from <b>Axial CT</b> (about Z)", unsafe_allow_html=True)
+    # order: sagittal, coronal, torsion — but each line explicitly states source/view
     alpha = st.number_input("Sagittal angulation (from Lateral X‑ray, about X) [deg]", -90, 90, 0, step=1, format="%d")
     beta  = st.number_input("Coronal angulation (from AP X‑ray, about Y) [deg]",    -90, 90, 0, step=1, format="%d")
     phi_app = st.number_input("Apparent torsion (from Axial CT, about Z) [deg]",   -180, 180, 0, step=1, format="%d")
